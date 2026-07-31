@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: image-worker
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/image_processing}
+    username: ${DB_USERNAME:image_app}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: false
+
+server:
+  port: 8081
+
+app:
+  worker:
+    batch-size: ${WORKER_BATCH_SIZE:5}
+    max-attempts: ${WORKER_MAX_ATTEMPTS:5}
+
+  storage:
+    upload-directory: ${UPLOAD_DIRECTORY:../image-api/uploads}
+    processed-directory: ${PROCESSED_DIRECTORY:processed}
+
+  pubsub:
+    project-id: ${PUBSUB_PROJECT_ID:local-image-project}
+    subscription-id: ${PUBSUB_SUBSCRIPTION_ID:image-jobs-worker}
+    emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+
+  endpoint:
+    health:
+      show-details: always
+
+info:
+  application:
+    name: Image Processing Worker
+    description: Background worker responsible for processing uploaded images
+    version: 0.1.0

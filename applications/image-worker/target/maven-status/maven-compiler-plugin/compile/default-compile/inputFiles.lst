@@ -1,0 +1,10 @@
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\config\PubSubSubscriberConfiguration.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\domain\ImageJob.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\domain\ImageJobStatus.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\dto\ImageJobMessage.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\ImageWorkerApplication.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\repository\ImageJobRepository.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\service\ImageJobMessageReceiver.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\service\ImageJobWorker.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\service\ImageProcessor.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-worker\src\main\java\pl\piotr\gcp\imageworker\service\PubSubSubscriberLifecycle.java

@@ -1,0 +1,11 @@
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\api\HealthController.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\api\ImageJobController.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\domain\ImageJob.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\domain\ImageJobStatus.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\dto\ApiErrorResponse.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\dto\ImageJobResponse.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\exception\GlobalExceptionHandler.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\exception\InvalidImageException.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\ImageApiApplication.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\repository\ImageJobRepository.java
+C:\Users\pioti\Desktop\image-processing-platform\applications\image-api\src\main\java\pl\piotr\gcp\imageapi\service\ImageJobService.java

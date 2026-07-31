@@ -1,0 +1,200 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: image-processing-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - image-processing-network
+
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: image-processing-pubsub
+    restart: unless-stopped
+
+    command:
+      - gcloud
+      - beta
+      - emulators
+      - pubsub
+      - start
+      - --project=${PUBSUB_PROJECT_ID}
+      - --host-port=0.0.0.0:8085
+
+    ports:
+      - "${PUBSUB_HOST_PORT:-8085}:8085"
+
+    networks:
+      - image-processing-network
+
+
+  image-api:
+    build:
+      context: ./applications/image-api
+      dockerfile: Dockerfile
+
+    container_name: image-processing-api
+    restart: unless-stopped
+
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      UPLOAD_DIRECTORY: /data/uploads
+
+      PUBSUB_PROJECT_ID: ${PUBSUB_PROJECT_ID}
+      PUBSUB_TOPIC_ID: ${PUBSUB_TOPIC_ID}
+      PUBSUB_EMULATOR_HOST: pubsub:8085
+
+      OUTBOX_POLLING_INTERVAL_MS: 2000
+      OUTBOX_BATCH_SIZE: 10
+      OUTBOX_MAX_ATTEMPTS: 5
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - image-data:/data
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      pubsub-init:
+        condition: service_completed_successfully
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:8080/actuator/health || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - image-processing-network
+
+
+  image-worker:
+    build:
+      context: ./applications/image-worker
+      dockerfile: Dockerfile
+
+    container_name: image-processing-worker
+    restart: unless-stopped
+
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      UPLOAD_DIRECTORY: /data/uploads
+      PROCESSED_DIRECTORY: /data/processed
+      POLLING_INTERVAL_MS: 5000
+      WORKER_BATCH_SIZE: 5
+      PUBSUB_PROJECT_ID: ${PUBSUB_PROJECT_ID}
+      PUBSUB_SUBSCRIPTION_ID: ${PUBSUB_SUBSCRIPTION_ID}
+      PUBSUB_EMULATOR_HOST: pubsub:8085
+      WORKER_MAX_ATTEMPTS: 5
+
+    ports:
+      - "8081:8081"
+
+    volumes:
+      - image-data:/data
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      pubsub-init:
+        condition: service_completed_successfully
+
+      image-api:
+        condition: service_healthy
+
+    networks:
+      - image-processing-network
+
+
+  pubsub-init:
+    image: curlimages/curl:8.14.1
+    container_name: image-processing-pubsub-init
+    restart: "no"
+
+    depends_on:
+      - pubsub
+
+    environment:
+      PUBSUB_PROJECT_ID: ${PUBSUB_PROJECT_ID}
+      PUBSUB_TOPIC_ID: ${PUBSUB_TOPIC_ID}
+      PUBSUB_SUBSCRIPTION_ID: ${PUBSUB_SUBSCRIPTION_ID}
+
+    entrypoint:
+      - /bin/sh
+      - -c
+
+    command:
+      - |
+        echo "Waiting for Pub/Sub emulator..."
+
+        until curl --silent --fail \
+          http://pubsub:8085/v1/projects/$${PUBSUB_PROJECT_ID}/topics \
+          > /dev/null; do
+          sleep 2
+        done
+
+        echo "Creating topic..."
+
+        curl --silent \
+          --request PUT \
+          http://pubsub:8085/v1/projects/$${PUBSUB_PROJECT_ID}/topics/$${PUBSUB_TOPIC_ID}
+
+        echo
+
+        echo "Creating subscription..."
+
+        curl --silent \
+          --request PUT \
+          --header "Content-Type: application/json" \
+          --data "{\"topic\":\"projects/$${PUBSUB_PROJECT_ID}/topics/$${PUBSUB_TOPIC_ID}\"}" \
+          http://pubsub:8085/v1/projects/$${PUBSUB_PROJECT_ID}/subscriptions/$${PUBSUB_SUBSCRIPTION_ID}
+
+        echo
+        echo "Pub/Sub initialization completed."
+
+    networks:
+      - image-processing-network
+
+volumes:
+  postgres-data:
+  image-data:
+
+
+networks:
+  image-processing-network:
+    driver: bridge
