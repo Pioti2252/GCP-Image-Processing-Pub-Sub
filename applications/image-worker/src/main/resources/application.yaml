@@ -25,6 +25,7 @@ server:
 
 app:
   worker:
+    local-dead-letter-handling: ${LOCAL_DEAD_LETTER_HANDLING:false}
     batch-size: ${WORKER_BATCH_SIZE:5}
     max-attempts: ${WORKER_MAX_ATTEMPTS:5}
 
@@ -35,7 +36,7 @@ app:
   pubsub:
     project-id: ${PUBSUB_PROJECT_ID:local-image-project}
     subscription-id: ${PUBSUB_SUBSCRIPTION_ID:image-jobs-worker}
-    emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8085}
+    emulator-host: ${PUBSUB_EMULATOR_HOST:}
 
 management:
   endpoints:

@@ -1,0 +1,2 @@
+project_id = "gcp-image-pub-sub"
+region     = "europe-central2"
