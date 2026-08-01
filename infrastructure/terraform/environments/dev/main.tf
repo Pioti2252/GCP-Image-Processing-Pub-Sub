@@ -1,6 +1,11 @@
 terraform {
   required_version = ">= 1.8.0"
 
+  backend "gcs" {
+    bucket = "gcp-image-pub-sub-terraform-state"
+    prefix = "environments/dev"
+  }
+
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -45,6 +50,37 @@ module "project_services" {
   ]
 }
 
+module "network" {
+  source = "../../modules/network"
+
+  project_id  = var.project_id
+  region      = var.region
+  environment = "dev"
+
+  network_name    = "image-processing-dev-vpc"
+  subnetwork_name = "image-processing-dev-gke-subnet"
+
+  subnetwork_cidr = "10.10.0.0/20"
+
+  pods_secondary_range_name = "image-processing-dev-pods"
+  pods_secondary_cidr       = "10.20.0.0/16"
+
+  services_secondary_range_name = "image-processing-dev-services"
+  services_secondary_cidr       = "10.30.0.0/20"
+
+  enable_flow_logs = true
+
+  labels = {
+    application = "image-processing"
+    environment = "dev"
+    managed_by  = "terraform"
+  }
+
+  depends_on = [
+    module.project_services
+  ]
+}
+
 module "artifact_registry" {
   source = "../../modules/artifact-registry"
 
@@ -60,6 +96,68 @@ module "artifact_registry" {
 
   depends_on = [
     module.project_services
+  ]
+}
+
+module "cloud_sql" {
+  source = "../../modules/cloud-sql"
+
+  project_id  = var.project_id
+  region      = var.region
+  environment = "dev"
+
+  network_id = module.network.network_id
+
+  instance_name = "image-processing-dev-postgres"
+
+  database_version = "POSTGRES_17"
+  tier             = "db-custom-1-3840"
+
+  database_name     = "image_processing"
+  database_user     = "image_app"
+  database_password = var.database_password
+
+  private_services_range_prefix_length = 16
+  deletion_protection                  = true
+
+  labels = {
+    application = "image-processing"
+    environment = "dev"
+    managed_by  = "terraform"
+  }
+
+  depends_on = [
+    module.project_services,
+    module.network
+  ]
+}
+
+module "secret_manager" {
+  source = "../../modules/secret-manager"
+
+  project_id  = var.project_id
+  environment = "dev"
+
+  database_password = var.database_password
+
+  image_api_service_account_email = (
+    module.iam.image_api_service_account_email
+  )
+
+  image_worker_service_account_email = (
+    module.iam.image_worker_service_account_email
+  )
+
+  labels = {
+    application = "image-processing"
+    environment = "dev"
+    managed_by  = "terraform"
+  }
+
+  depends_on = [
+    module.project_services,
+    module.iam,
+    module.cloud_sql
   ]
 }
 
@@ -96,5 +194,35 @@ module "iam" {
   depends_on = [
     module.project_services,
     module.pubsub
+  ]
+}
+
+module "storage" {
+  source = "../../modules/storage"
+
+  project_id = var.project_id
+  region     = var.region
+
+  bucket_name = "${var.project_id}-image-processing-dev"
+
+  image_api_service_account_email = (
+    module.iam.image_api_service_account_email
+  )
+
+  image_worker_service_account_email = (
+    module.iam.image_worker_service_account_email
+  )
+
+  force_destroy = false
+
+  labels = {
+    application = "image-processing"
+    environment = "dev"
+    managed_by  = "terraform"
+  }
+
+  depends_on = [
+    module.project_services,
+    module.iam
   ]
 }

@@ -8,3 +8,9 @@ variable "region" {
   type        = string
   default     = "europe-central2"
 }
+
+variable "database_password" {
+  description = "Hasło użytkownika aplikacyjnego Cloud SQL"
+  type        = string
+  sensitive   = true
+}
