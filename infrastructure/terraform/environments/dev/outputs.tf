@@ -81,3 +81,19 @@ output "cloud_sql_database_name" {
 output "database_password_secret_id" {
   value = module.secret_manager.database_password_secret_id
 }
+
+output "gke_cluster_name" {
+  value = module.gke.cluster_name
+}
+
+output "gke_cluster_location" {
+  value = module.gke.cluster_location
+}
+
+output "gke_workload_identity_pool" {
+  value = module.gke.workload_identity_pool
+}
+
+output "gke_node_service_account_email" {
+  value = module.gke.node_service_account_email
+}

@@ -81,6 +81,53 @@ module "network" {
   ]
 }
 
+module "gke" {
+  source = "../../modules/gke"
+
+  project_id  = var.project_id
+  location    = var.zone
+  environment = "dev"
+
+  cluster_name = "image-processing-dev-gke"
+
+  network_id    = module.network.network_id
+  subnetwork_id = module.network.subnetwork_id
+
+  pods_secondary_range_name = (
+    module.network.pods_secondary_range_name
+  )
+
+  services_secondary_range_name = (
+    module.network.services_secondary_range_name
+  )
+
+  master_ipv4_cidr_block = "172.16.0.0/28"
+
+  master_authorized_networks = [
+    {
+      cidr_block   = var.gke_admin_cidr
+      display_name = "administrator"
+    }
+  ]
+
+  machine_type  = "e2-standard-2"
+  disk_size_gb  = 50
+  min_node_count = 1
+  max_node_count = 3
+
+  labels = {
+    application = "image-processing"
+    environment = "dev"
+    managed_by  = "terraform"
+  }
+
+  depends_on = [
+    module.project_services,
+    module.network,
+    module.artifact_registry
+  ]
+}
+
 module "artifact_registry" {
   source = "../../modules/artifact-registry"
 
