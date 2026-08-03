@@ -237,11 +237,17 @@ module "iam" {
   environment              = "dev"
   pubsub_topic_name        = module.pubsub.topic_name
   worker_subscription_name = module.pubsub.worker_subscription_name
+  
+  kubernetes_namespace = "image-processing"
+
+  image_api_kubernetes_service_account    = "image-api"
+  image_worker_kubernetes_service_account = "image-worker"
 
   depends_on = [
     module.project_services,
     module.pubsub
   ]
+
 }
 
 module "storage" {

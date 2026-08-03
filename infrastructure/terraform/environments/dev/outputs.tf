@@ -97,3 +97,7 @@ output "gke_workload_identity_pool" {
 output "gke_node_service_account_email" {
   value = module.gke.node_service_account_email
 }
+
+output "kubernetes_namespace" {
+  value = module.iam.kubernetes_namespace
+}

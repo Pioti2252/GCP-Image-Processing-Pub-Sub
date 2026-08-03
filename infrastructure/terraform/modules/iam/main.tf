@@ -37,3 +37,41 @@ resource "google_pubsub_subscription_iam_member" "image_worker_subscriber" {
 
   member = "serviceAccount:${google_service_account.image_worker.email}"
 }
+
+resource "google_project_iam_member" "image_api_cloud_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+
+  member = "serviceAccount:${google_service_account.image_api.email}"
+}
+
+resource "google_project_iam_member" "image_worker_cloud_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+
+  member = "serviceAccount:${google_service_account.image_worker.email}"
+}
+
+resource "google_service_account_iam_member" "image_api_workload_identity" {
+  service_account_id = google_service_account.image_api.name
+  role               = "roles/iam.workloadIdentityUser"
+
+  member = format(
+    "serviceAccount:%s.svc.id.goog[%s/%s]",
+    var.project_id,
+    var.kubernetes_namespace,
+    var.image_api_kubernetes_service_account
+  )
+}
+
+resource "google_service_account_iam_member" "image_worker_workload_identity" {
+  service_account_id = google_service_account.image_worker.name
+  role               = "roles/iam.workloadIdentityUser"
+
+  member = format(
+    "serviceAccount:%s.svc.id.goog[%s/%s]",
+    var.project_id,
+    var.kubernetes_namespace,
+    var.image_worker_kubernetes_service_account
+  )
+}
