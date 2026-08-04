@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import pl.piotr.gcp.imageworker.dto.ImageJobMessage;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
-import pl.piotr.gcp.imageworker.service.ProcessingResult;
 
 @Component
 public class ImageJobMessageReceiver implements MessageReceiver {
@@ -59,13 +59,14 @@ public class ImageJobMessageReceiver implements MessageReceiver {
             );
 
             switch (result) {
-                case COMPLETED, ALREADY_COMPLETED -> {
+                case COMPLETED, ALREADY_COMPLETED, FAILED -> {
                     consumer.ack();
 
                     LOGGER.info(
-                            "Pub/Sub message acknowledged: messageId={}, jobId={}",
+                            "Pub/Sub message acknowledged: messageId={}, jobId={}, result={}",
                             messageId,
-                            message.jobId()
+                            message.jobId(),
+                            result
                     );
                 }
 
@@ -73,22 +74,23 @@ public class ImageJobMessageReceiver implements MessageReceiver {
                     consumer.nack();
 
                     LOGGER.warn(
-                            "Pub/Sub message negatively acknowledged for retry: messageId={}, jobId={}",
+                            "Pub/Sub message negatively acknowledged: messageId={}, jobId={}, result={}",
                             messageId,
-                            message.jobId()
-                    );
-                }
-
-                case FAILED -> {
-                    consumer.ack();
-
-                    LOGGER.error(
-                            "Pub/Sub message acknowledged after permanent failure: messageId={}, jobId={}",
-                            messageId,
-                            message.jobId()
+                            message.jobId(),
+                            result
                     );
                 }
             }
+
+        } catch (JacksonException exception) {
+            LOGGER.error(
+                    "Invalid Pub/Sub payload. Message will be acknowledged: messageId={}, payload={}",
+                    messageId,
+                    payload,
+                    exception
+            );
+
+            consumer.ack();
 
         } catch (Exception exception) {
             LOGGER.error(

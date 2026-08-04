@@ -30,8 +30,10 @@ app:
     max-attempts: ${WORKER_MAX_ATTEMPTS:5}
 
   storage:
-    upload-directory: ${UPLOAD_DIRECTORY:../image-api/uploads}
-    processed-directory: ${PROCESSED_DIRECTORY:processed}
+    type: ${STORAGE_TYPE:gcs}
+    bucket-name: ${STORAGE_BUCKET_NAME}
+    upload-prefix: ${STORAGE_UPLOAD_PREFIX:uploads/}
+    processed-prefix: ${STORAGE_PROCESSED_PREFIX:processed/}
 
   pubsub:
     project-id: ${PUBSUB_PROJECT_ID:local-image-project}

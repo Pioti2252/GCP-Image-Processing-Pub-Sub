@@ -1,29 +1,23 @@
 package pl.piotr.gcp.imageapi.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import pl.piotr.gcp.imageapi.domain.OutboxEvent;
-import pl.piotr.gcp.imageapi.domain.OutboxEventStatus;
-import pl.piotr.gcp.imageapi.repository.OutboxEventRepository;
-import tools.jackson.databind.json.JsonMapper;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import pl.piotr.gcp.imageapi.domain.ImageJob;
 import pl.piotr.gcp.imageapi.domain.ImageJobStatus;
+import pl.piotr.gcp.imageapi.domain.OutboxEvent;
+import pl.piotr.gcp.imageapi.domain.OutboxEventStatus;
 import pl.piotr.gcp.imageapi.dto.ImageJobMessage;
 import pl.piotr.gcp.imageapi.exception.InvalidImageException;
 import pl.piotr.gcp.imageapi.repository.ImageJobRepository;
+import pl.piotr.gcp.imageapi.repository.OutboxEventRepository;
+import tools.jackson.databind.json.JsonMapper;
 
 @Service
 public class ImageJobService {
@@ -37,31 +31,18 @@ public class ImageJobService {
     private final ImageJobRepository imageJobRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final JsonMapper jsonMapper;
-    private final Path uploadDirectory;
+    private final CloudImageStorage cloudImageStorage;
 
     public ImageJobService(
             ImageJobRepository imageJobRepository,
             OutboxEventRepository outboxEventRepository,
             JsonMapper jsonMapper,
-            @Value("${app.storage.upload-directory:uploads}")
-            String uploadDirectory
+            CloudImageStorage cloudImageStorage
     ) {
         this.imageJobRepository = imageJobRepository;
         this.outboxEventRepository = outboxEventRepository;
         this.jsonMapper = jsonMapper;
-
-        this.uploadDirectory = Path.of(uploadDirectory)
-                .toAbsolutePath()
-                .normalize();
-
-        try {
-            Files.createDirectories(this.uploadDirectory);
-        } catch (IOException exception) {
-            throw new IllegalStateException(
-                    "Nie udało się utworzyć katalogu na pliki",
-                    exception
-            );
-        }
+        this.cloudImageStorage = cloudImageStorage;
     }
 
     @Transactional
@@ -69,34 +50,16 @@ public class ImageJobService {
         validateFile(file);
 
         UUID jobId = UUID.randomUUID();
-
-        String storedFilename =
-                jobId + resolveExtension(file.getContentType());
-
-        Path targetPath = uploadDirectory
-                .resolve(storedFilename)
-                .normalize();
-
-        if (!targetPath.startsWith(uploadDirectory)) {
-            throw new InvalidImageException(
-                    "Nieprawidłowa ścieżka pliku"
-            );
-        }
-
-        try {
-            Files.copy(
-                    file.getInputStream(),
-                    targetPath,
-                    StandardCopyOption.REPLACE_EXISTING
-            );
-        } catch (IOException exception) {
-            throw new IllegalStateException(
-                    "Nie udało się zapisać przesłanego pliku",
-                    exception
-            );
-        }
-
         Instant now = Instant.now();
+
+        String extension = resolveExtension(file.getContentType());
+
+        String storedFilename = cloudImageStorage.upload(
+                jobId,
+                extension,
+                file.getContentType(),
+                file
+        );
 
         ImageJob imageJob = new ImageJob(
                 jobId,
@@ -117,7 +80,7 @@ public class ImageJobService {
                 savedJob.getId(),
                 savedJob.getStoredFilename(),
                 correlationId,
-                Instant.now()
+                now
         );
 
         String payload = jsonMapper.writeValueAsString(message);
@@ -130,7 +93,7 @@ public class ImageJobService {
                 payload,
                 OutboxEventStatus.PENDING,
                 0,
-                Instant.now()
+                now
         );
 
         outboxEventRepository.save(outboxEvent);

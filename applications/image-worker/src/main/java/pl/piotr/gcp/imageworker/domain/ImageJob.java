@@ -101,6 +101,9 @@ public class ImageJob {
         failedAt = Instant.now();
         updatedAt = Instant.now();
     }
+    public String getContentType() {
+        return contentType;
+    }
 
     private String limitError(String error) {
         if (error == null) {

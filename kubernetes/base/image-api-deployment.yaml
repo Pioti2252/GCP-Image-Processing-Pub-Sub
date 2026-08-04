@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-api
+  namespace: image-processing
+  labels:
+    app: image-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-api
+  template:
+    metadata:
+      labels:
+        app: image-api
+    spec:
+      serviceAccountName: image-api
+
+      containers:
+        - name: image-api
+          image: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-api:0.1.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8080
+
+          envFrom:
+            - configMapRef:
+                name: image-processing-config
+
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: image-processing-db
+                  key: DB_PASSWORD
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.18.2
+
+          args:
+            - "--private-ip"
+            - "--auto-iam-authn=false"
+            - "--port=5432"
+            - "gcp-image-pub-sub:europe-central2:image-processing-dev-postgres"
+
+          securityContext:
+            runAsNonRoot: true
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

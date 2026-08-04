@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 
+
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
@@ -50,7 +51,7 @@ public class ImageJobPublisher {
 
             String messageId = publisher
                     .publish(pubsubMessage)
-                    .get(10, TimeUnit.SECONDS);
+                    .get(30, TimeUnit.SECONDS);
 
             LOGGER.info(
                     "Published outbox event: aggregateId={}, eventType={}, messageId={}",

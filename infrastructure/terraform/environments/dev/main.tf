@@ -110,8 +110,8 @@ module "gke" {
     }
   ]
 
-  machine_type  = "e2-standard-2"
-  disk_size_gb  = 50
+  machine_type   = "e2-standard-2"
+  disk_size_gb   = 50
   min_node_count = 1
   max_node_count = 3
 
@@ -237,7 +237,7 @@ module "iam" {
   environment              = "dev"
   pubsub_topic_name        = module.pubsub.topic_name
   worker_subscription_name = module.pubsub.worker_subscription_name
-  
+
   kubernetes_namespace = "image-processing"
 
   image_api_kubernetes_service_account    = "image-api"

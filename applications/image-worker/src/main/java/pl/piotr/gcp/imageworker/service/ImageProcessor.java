@@ -6,7 +6,6 @@ import java.nio.file.Path;
 
 import net.coobird.thumbnailator.Thumbnails;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import pl.piotr.gcp.imageworker.domain.ImageJob;
@@ -14,62 +13,76 @@ import pl.piotr.gcp.imageworker.domain.ImageJob;
 @Service
 public class ImageProcessor {
 
-    private final Path uploadDirectory;
-    private final Path processedDirectory;
+    private final CloudImageStorage cloudImageStorage;
 
     public ImageProcessor(
-            @Value("${app.storage.upload-directory}")
-            String uploadDirectory,
-            @Value("${app.storage.processed-directory}")
-            String processedDirectory
+            CloudImageStorage cloudImageStorage
     ) {
-        this.uploadDirectory = Path.of(uploadDirectory)
-                .toAbsolutePath()
-                .normalize();
-
-        this.processedDirectory = Path.of(processedDirectory)
-                .toAbsolutePath()
-                .normalize();
-
-        try {
-            Files.createDirectories(this.processedDirectory);
-        } catch (IOException exception) {
-            throw new IllegalStateException(
-                    "Nie udało się utworzyć katalogu processed",
-                    exception
-            );
-        }
+        this.cloudImageStorage = cloudImageStorage;
     }
 
     public void process(ImageJob imageJob) throws IOException {
-        Path sourcePath = uploadDirectory
-                .resolve(imageJob.getStoredFilename())
-                .normalize();
+        Path sourcePath = null;
+        Path outputPath = null;
 
-        if (!sourcePath.startsWith(uploadDirectory)) {
-            throw new IOException("Nieprawidłowa ścieżka pliku wejściowego");
+        try {
+            sourcePath = cloudImageStorage.downloadToTemporaryFile(
+                    imageJob.getStoredFilename()
+            );
+
+            String extension = resolveExtension(
+                    imageJob.getStoredFilename()
+            );
+
+            outputPath = Files.createTempFile(
+                    "thumbnail-" + imageJob.getId() + "-",
+                    extension
+            );
+
+            Thumbnails.of(sourcePath.toFile())
+                    .size(400, 400)
+                    .keepAspectRatio(true)
+                    .toFile(outputPath.toFile());
+
+            String processedObjectName =
+                    cloudImageStorage.uploadProcessed(
+                            outputPath,
+                            imageJob.getId().toString(),
+                            extension,
+                            imageJob.getContentType()
+                    );
+
+            // Na razie tylko wysyłamy wynik do GCS.
+            // Później zapiszemy processedObjectName w bazie.
+        } finally {
+            deleteTemporaryFile(sourcePath);
+            deleteTemporaryFile(outputPath);
         }
+    }
 
-        if (!Files.exists(sourcePath)) {
-            throw new IOException(
-                    "Nie znaleziono pliku: " + sourcePath
+    private String resolveExtension(String objectName) {
+        int dotIndex = objectName.lastIndexOf('.');
+
+        if (dotIndex < 0) {
+            throw new IllegalArgumentException(
+                    "Nie można ustalić rozszerzenia obiektu: "
+                            + objectName
             );
         }
 
-        String outputFilename =
-                "thumbnail-" + imageJob.getStoredFilename();
+        return objectName.substring(dotIndex);
+    }
 
-        Path outputPath = processedDirectory
-                .resolve(outputFilename)
-                .normalize();
-
-        if (!outputPath.startsWith(processedDirectory)) {
-            throw new IOException("Nieprawidłowa ścieżka pliku wynikowego");
+    private void deleteTemporaryFile(Path path) {
+        if (path == null) {
+            return;
         }
 
-        Thumbnails.of(sourcePath.toFile())
-                .size(400, 400)
-                .keepAspectRatio(true)
-                .toFile(outputPath.toFile());
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException exception) {
+            // Nie przerywamy całego przetwarzania przez problem
+            // z usunięciem pliku tymczasowego.
+        }
     }
 }

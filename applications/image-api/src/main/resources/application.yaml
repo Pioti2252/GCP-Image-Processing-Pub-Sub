@@ -31,12 +31,14 @@ server:
 
 app:
   storage:
-    upload-directory: ${UPLOAD_DIRECTORY:uploads}
+    type: ${STORAGE_TYPE:gcs}
+    bucket-name: ${STORAGE_BUCKET_NAME}
+    upload-prefix: ${STORAGE_UPLOAD_PREFIX:uploads/}
 
   pubsub:
     project-id: ${PUBSUB_PROJECT_ID:local-image-project}
     topic-id: ${PUBSUB_TOPIC_ID:image-jobs}
-    emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8085}
+    emulator-host: ${PUBSUB_EMULATOR_HOST:}
 
   outbox:
     polling-interval-ms: ${OUTBOX_POLLING_INTERVAL_MS:2000}
