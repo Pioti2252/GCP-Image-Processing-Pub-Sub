@@ -24,6 +24,21 @@ jobs:
     name: Test applications
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: image_processing
+          POSTGRES_USER: image_app
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U image_app -d image_processing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,10 +52,34 @@ jobs:
 
       - name: Test image-api
         working-directory: applications/image-api
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/image_processing
+          DB_USERNAME: image_app
+          DB_PASSWORD: test_password
         run: mvn clean test
 
       - name: Test image-worker
         working-directory: applications/image-worker
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/image_processing
+          DB_USERNAME: image_app
+          DB_PASSWORD: test_password
+        run: mvn clean test
+
+      - name: Test image-api
+        working-directory: applications/image-api
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/image_processing
+          DB_USERNAME: image_app
+          DB_PASSWORD: test_password
+        run: mvn clean test
+
+      - name: Test image-worker
+        working-directory: applications/image-worker
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/image_processing
+          DB_USERNAME: image_app
+          DB_PASSWORD: test_password
         run: mvn clean test
 
   build:
