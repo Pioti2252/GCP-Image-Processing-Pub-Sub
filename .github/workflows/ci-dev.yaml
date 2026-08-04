@@ -1,0 +1,95 @@
+name: CI DEV
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: gcp-image-pub-sub
+  REGION: europe-central2
+  REPOSITORY: image-processing-dev
+  API_IMAGE: image-api
+  WORKER_IMAGE: image-worker
+
+jobs:
+  test:
+    name: Test applications
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Test image-api
+        working-directory: applications/image-api
+        run: ./mvnw clean test
+
+      - name: Test image-worker
+        working-directory: applications/image-worker
+        run: ./mvnw clean test
+
+  build:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    needs: test
+
+    # Pull request wykonuje wyłącznie testy.
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/337402413508/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+          service_account: github-actions-dev@gcp-image-pub-sub.iam.gserviceaccount.com
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker authentication
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Prepare image tag
+        run: |
+          echo "IMAGE_TAG=${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Build image-api
+        run: |
+          docker build \
+            -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${API_IMAGE}:${IMAGE_TAG}" \
+            applications/image-api
+
+      - name: Build image-worker
+        run: |
+          docker build \
+            -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${WORKER_IMAGE}:${IMAGE_TAG}" \
+            applications/image-worker
+
+      - name: Push image-api
+        run: |
+          docker push \
+            "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${API_IMAGE}:${IMAGE_TAG}"
+
+      - name: Push image-worker
+        run: |
+          docker push \
+            "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${WORKER_IMAGE}:${IMAGE_TAG}"
