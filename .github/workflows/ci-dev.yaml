@@ -56,6 +56,12 @@ jobs:
           DB_URL: jdbc:postgresql://localhost:5432/image_processing
           DB_USERNAME: image_app
           DB_PASSWORD: test_password
+
+          STORAGE_BUCKET_NAME: test-image-processing-bucket
+          GCP_PROJECT_ID: gcp-image-pub-sub
+          PUBSUB_TOPIC_ID: image-jobs-dev
+
+          PUBSUB_EMULATOR_HOST: localhost:8085
         run: mvn clean test
 
       - name: Test image-worker
@@ -64,22 +70,10 @@ jobs:
           DB_URL: jdbc:postgresql://localhost:5432/image_processing
           DB_USERNAME: image_app
           DB_PASSWORD: test_password
-        run: mvn clean test
 
-      - name: Test image-api
-        working-directory: applications/image-api
-        env:
-          DB_URL: jdbc:postgresql://localhost:5432/image_processing
-          DB_USERNAME: image_app
-          DB_PASSWORD: test_password
-        run: mvn clean test
-
-      - name: Test image-worker
-        working-directory: applications/image-worker
-        env:
-          DB_URL: jdbc:postgresql://localhost:5432/image_processing
-          DB_USERNAME: image_app
-          DB_PASSWORD: test_password
+          STORAGE_BUCKET_NAME: test-image-processing-bucket
+          GCP_PROJECT_ID: gcp-image-pub-sub
+          PUBSUB_SUBSCRIPTION_ID: image-jobs-worker-dev
         run: mvn clean test
 
   build:
