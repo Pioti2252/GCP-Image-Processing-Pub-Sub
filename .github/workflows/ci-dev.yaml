@@ -37,11 +37,11 @@ jobs:
 
       - name: Test image-api
         working-directory: applications/image-api
-        run: ./mvnw clean test
+        run: mvn clean test
 
       - name: Test image-worker
         working-directory: applications/image-worker
-        run: ./mvnw clean test
+        run: mvn clean test
 
   build:
     name: Build and push images
