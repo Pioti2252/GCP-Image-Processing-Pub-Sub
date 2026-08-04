@@ -7,9 +7,15 @@ import jakarta.annotation.PreDestroy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(
+        name = "app.pubsub.subscriber-enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 public class PubSubSubscriberLifecycle {
 
     private static final Logger LOGGER =

@@ -74,6 +74,8 @@ jobs:
           STORAGE_BUCKET_NAME: test-image-processing-bucket
           GCP_PROJECT_ID: gcp-image-pub-sub
           PUBSUB_SUBSCRIPTION_ID: image-jobs-worker-dev
+
+          APP_PUBSUB_SUBSCRIBER_ENABLED: "false"
         run: mvn clean test
 
   build:
