@@ -14,10 +14,16 @@ permissions:
 
 env:
   PROJECT_ID: gcp-image-pub-sub
+  PROJECT_NUMBER: "337402413508"
   REGION: europe-central2
   REPOSITORY: image-processing-dev
+
   API_IMAGE: image-api
   WORKER_IMAGE: image-worker
+
+  GKE_CLUSTER: image-processing-dev-gke
+  GKE_LOCATION: europe-central2
+  K8S_NAMESPACE: image-processing
 
 jobs:
   test:
@@ -128,3 +134,91 @@ jobs:
         run: |
           docker push \
             "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${WORKER_IMAGE}:${IMAGE_TAG}"
+  deploy-dev:
+    name: Deploy to DEV
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - build
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      id-token: write
+
+    environment:
+      name: dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+          service_account: github-actions-dev@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.PROJECT_ID }}
+          namespace: ${{ env.K8S_NAMESPACE }}
+
+      - name: Verify cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+          kubectl get pods -n "${K8S_NAMESPACE}"
+
+      - name: Set image tags in DEV overlay
+        working-directory: kubernetes/overlays/dev
+        run: |
+          sed -i -E "s#newTag: \".*\"#newTag: \"${GITHUB_SHA}\"#g" kustomization.yaml
+
+          echo "Rendered images:"
+          kubectl kustomize . | grep "image:"
+
+      - name: Validate Kubernetes manifests
+        run: |
+          kubectl apply \
+            -k kubernetes/overlays/dev \
+            --dry-run=server
+
+      - name: Deploy to DEV
+        run: |
+          kubectl apply \
+            -k kubernetes/overlays/dev
+
+      - name: Wait for image-api rollout
+        run: |
+          kubectl rollout status \
+            deployment/image-api \
+            -n "${K8S_NAMESPACE}" \
+            --timeout=5m
+
+      - name: Wait for image-worker rollout
+        run: |
+          kubectl rollout status \
+            deployment/image-worker \
+            -n "${K8S_NAMESPACE}" \
+            --timeout=5m
+
+      - name: Show deployed resources
+        if: always()
+        run: |
+          kubectl get pods \
+            -n "${K8S_NAMESPACE}" \
+            -o wide
+
+          kubectl get deployments \
+            -n "${K8S_NAMESPACE}"
+
+          kubectl get events \
+            -n "${K8S_NAMESPACE}" \
+            --sort-by='.lastTimestamp' |
+            tail -n 30
