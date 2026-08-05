@@ -22,7 +22,7 @@ env:
   WORKER_IMAGE: image-worker
 
   GKE_CLUSTER: image-processing-dev-gke
-  GKE_LOCATION: europe-central2
+  GKE_LOCATION: europe-central2-a
   K8S_NAMESPACE: image-processing
 
 jobs:
