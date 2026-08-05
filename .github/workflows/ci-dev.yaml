@@ -210,7 +210,7 @@ jobs:
             --timeout=5m
 
       - name: Show deployed resources
-        if: always()
+        if: success()
         run: |
           kubectl get pods \
             -n "${K8S_NAMESPACE}" \
