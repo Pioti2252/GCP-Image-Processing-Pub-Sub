@@ -167,8 +167,8 @@ jobs:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_LOCATION }}
           project_id: ${{ env.PROJECT_ID }}
-          namespace: ${{ env.K8S_NAMESPACE }}
           use_connect_gateway: true
+          fleet_membership_name: projects/gcp-image-pub-sub/locations/europe-central2/memberships/image-processing-dev-gke
 
       - name: Verify cluster connection
         run: |
