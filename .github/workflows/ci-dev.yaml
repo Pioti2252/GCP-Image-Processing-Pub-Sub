@@ -91,7 +91,7 @@ jobs:
     needs: test
 
     # Pull request wykonuje wyłącznie testy.
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout repository
@@ -143,7 +143,7 @@ jobs:
       - test
       - build
 
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
 
     permissions:
       contents: write
