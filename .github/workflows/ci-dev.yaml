@@ -136,42 +136,42 @@ jobs:
             "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${WORKER_IMAGE}:${IMAGE_TAG}"
 
   update-dev-manifest:
-      name: Update DEV manifest
-      runs-on: ubuntu-latest
-      needs:
-        - test
-        - build
+    name: Update DEV manifest
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - build
 
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-      permissions:
-        contents: write
+    permissions:
+      contents: write
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
-          with:
-            ref: main
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
 
-        - name: Update DEV image tags
-          working-directory: kubernetes/overlays/dev
-          run: |
-            sed -i -E "s#newTag: \".*\"#newTag: \"${GITHUB_SHA}\"#g" kustomization.yaml
+      - name: Update DEV image tags
+        working-directory: kubernetes/overlays/dev
+        run: |
+          sed -i -E "s#newTag: \".*\"#newTag: \"${GITHUB_SHA}\"#g" kustomization.yaml
 
-            echo "Updated DEV images:"
-            kubectl kustomize . | grep "image:"
+          echo "Updated DEV images:"
+          kubectl kustomize . | grep "image:"
 
-        - name: Commit DEV manifest
-          run: |
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Commit DEV manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-            git add kubernetes/overlays/dev/kustomization.yaml
+          git add kubernetes/overlays/dev/kustomization.yaml
 
-            if git diff --cached --quiet; then
-              echo "No manifest changes to commit"
-              exit 0
-            fi
+          if git diff --cached --quiet; then
+            echo "No manifest changes to commit"
+            exit 0
+          fi
 
-            git commit -m "chore(dev): deploy ${GITHUB_SHA}"
-            git push origin HEAD:main
+          git commit -m "chore(dev): deploy ${GITHUB_SHA}"
+          git push origin HEAD:main
