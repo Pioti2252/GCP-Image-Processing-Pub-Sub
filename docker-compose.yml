@@ -176,7 +176,7 @@ services:
 
         echo
 
-        echo "Creating subscription..."
+        echo "Creating subscription....."
 
         curl --silent \
           --request PUT \
