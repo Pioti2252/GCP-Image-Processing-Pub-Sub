@@ -160,7 +160,7 @@ services:
 
     command:
       - |
-        echo "Waiting for Pub/Sub emulator..."
+        echo "Waiting for Pub/Sub emulator....."
 
         until curl --silent --fail \
           http://pubsub:8085/v1/projects/$${PUBSUB_PROJECT_ID}/topics \
