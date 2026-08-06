@@ -134,92 +134,44 @@ jobs:
         run: |
           docker push \
             "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${WORKER_IMAGE}:${IMAGE_TAG}"
-  deploy-dev:
-    name: Deploy to DEV
-    runs-on: ubuntu-latest
-    needs:
-      - test
-      - build
 
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  update-dev-manifest:
+      name: Update DEV manifest
+      runs-on: ubuntu-latest
+      needs:
+        - test
+        - build
 
-    permissions:
-      contents: read
-      id-token: write
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    environment:
-      name: dev
+      permissions:
+        contents: write
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            ref: main
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-          workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
-          service_account: github-actions-dev@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+        - name: Update DEV image tags
+          working-directory: kubernetes/overlays/dev
+          run: |
+            sed -i -E "s#newTag: \".*\"#newTag: \"${GITHUB_SHA}\"#g" kustomization.yaml
 
-      - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v3
-        with:
-          cluster_name: ${{ env.GKE_CLUSTER }}
-          location: ${{ env.GKE_LOCATION }}
-          project_id: ${{ env.PROJECT_ID }}
-          use_connect_gateway: true
-          fleet_membership_name: projects/gcp-image-pub-sub/locations/europe-central2/memberships/image-processing-dev-gke
+            echo "Updated DEV images:"
+            kubectl kustomize . | grep "image:"
 
-      - name: Verify cluster connection
-        run: |
-          kubectl cluster-info
-          kubectl get namespace "${K8S_NAMESPACE}"
-          kubectl get pods -n "${K8S_NAMESPACE}"
+        - name: Commit DEV manifest
+          run: |
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Set image tags in DEV overlay
-        working-directory: kubernetes/overlays/dev
-        run: |
-          sed -i -E "s#newTag: \".*\"#newTag: \"${GITHUB_SHA}\"#g" kustomization.yaml
+            git add kubernetes/overlays/dev/kustomization.yaml
 
-          echo "Rendered images:"
-          kubectl kustomize . | grep "image:"
+            if git diff --cached --quiet; then
+              echo "No manifest changes to commit"
+              exit 0
+            fi
 
-      - name: Validate Kubernetes manifests
-        run: |
-          kubectl apply \
-            -k kubernetes/overlays/dev \
-            --dry-run=server
-
-      - name: Deploy to DEV
-        run: |
-          kubectl apply \
-            -k kubernetes/overlays/dev
-
-      - name: Wait for image-api rollout
-        run: |
-          kubectl rollout status \
-            deployment/image-api \
-            -n "${K8S_NAMESPACE}" \
-            --timeout=5m
-
-      - name: Wait for image-worker rollout
-        run: |
-          kubectl rollout status \
-            deployment/image-worker \
-            -n "${K8S_NAMESPACE}" \
-            --timeout=5m
-
-      - name: Show deployed resources
-        if: success()
-        run: |
-          kubectl get pods \
-            -n "${K8S_NAMESPACE}" \
-            -o wide
-
-          kubectl get deployments \
-            -n "${K8S_NAMESPACE}"
-
-          kubectl get events \
-            -n "${K8S_NAMESPACE}" \
-            --sort-by='.lastTimestamp' |
-            tail -n 30
+            git commit -m "chore(dev): deploy ${GITHUB_SHA}"
+            git push origin HEAD:main
