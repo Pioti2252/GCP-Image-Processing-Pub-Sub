@@ -7,11 +7,11 @@ resources:
 images:
   - name: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-api
     newName: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-api
-    newTag: "5967dd194e6944be1e7b94de56c2e57f2dd837b4"
+    newTag: "bedcff2140062e4419f5828e8a15fe55089fa0c1"
 
   - name: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-worker
     newName: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-worker
-    newTag: "5967dd194e6944be1e7b94de56c2e57f2dd837b4"
+    newTag: "bedcff2140062e4419f5828e8a15fe55089fa0c1"
 
 labels:
   - pairs:
