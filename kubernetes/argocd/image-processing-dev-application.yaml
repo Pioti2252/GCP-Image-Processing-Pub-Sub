@@ -6,7 +6,7 @@ metadata:
   namespace: argocd
 
 spec:
-  project: default
+  project: image-processing
 
   source:
     repoURL: https://github.com/Pioti2252/GCP-Image-Processing-Pub-Sub.git

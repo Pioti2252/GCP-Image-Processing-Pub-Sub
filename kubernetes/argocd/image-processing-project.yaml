@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+
+metadata:
+  name: image-processing
+  namespace: argocd
+
+spec:
+  description: Image Processing platform applications
+
+  sourceRepos:
+    - https://github.com/Pioti2252/GCP-Image-Processing-Pub-Sub.git
+
+  destinations:
+    - namespace: image-processing
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
