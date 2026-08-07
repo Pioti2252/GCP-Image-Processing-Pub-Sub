@@ -15,6 +15,9 @@ spec:
     - namespace: image-processing
       server: https://kubernetes.default.svc
 
+    - namespace: image-processing-prod
+      server: https://kubernetes.default.svc
+
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: image-processing-prod
+  namespace: argocd
+
+spec:
+  project: image-processing
+
+  source:
+    repoURL: https://github.com/Pioti2252/GCP-Image-Processing-Pub-Sub.git
+    targetRevision: main
+    path: kubernetes/overlays/prod
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: image-processing-prod
+
+  syncPolicy:
+    automated:
+      enabled: false
+      prune: false
+      selfHeal: false
+
+    syncOptions:
+      - CreateNamespace=false
