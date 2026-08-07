@@ -1,0 +1,53 @@
+name: Promote DEV to PROD
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    name: Promote image to PROD
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Read DEV image tag
+        id: dev-tag
+        working-directory: kubernetes/overlays/dev
+        run: |
+          TAG=$(grep 'newTag:' kustomization.yaml | head -n 1 | sed -E 's/.*newTag: "(.*)"/\1/')
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "DEV tag: ${TAG}"
+
+      - name: Update PROD image tags
+        working-directory: kubernetes/overlays/prod
+        env:
+          DEV_TAG: ${{ steps.dev-tag.outputs.tag }}
+        run: |
+          sed -i -E "s#newTag: \".*\"#newTag: \"${DEV_TAG}\"#g" kustomization.yaml
+
+          echo "PROD manifest:"
+          cat kustomization.yaml
+
+      - name: Commit PROD promotion
+        env:
+          DEV_TAG: ${{ steps.dev-tag.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add kubernetes/overlays/prod/kustomization.yaml
+
+          if git diff --cached --quiet; then
+            echo "PROD already uses this image"
+            exit 0
+          fi
+
+          git commit -m "chore(prod): promote ${DEV_TAG}"
+          git push origin HEAD:main
