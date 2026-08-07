@@ -18,5 +18,10 @@ spec:
     namespace: image-processing
 
   syncPolicy:
+    automated:
+      enabled: true
+      prune: true
+      selfHeal: true
+
     syncOptions:
       - CreateNamespace=false
