@@ -167,6 +167,8 @@ module "cloud_sql" {
   private_services_range_prefix_length = 16
   deletion_protection                  = true
 
+  create_private_service_connection = true
+
   labels = {
     application = "image-processing"
     environment = "dev"
@@ -222,6 +224,8 @@ module "pubsub" {
   max_delivery_attempts = 5
   minimum_backoff       = "10s"
   maximum_backoff       = "600s"
+
+  manage_project_service = true
 
   labels = {
     application = "image-processing"

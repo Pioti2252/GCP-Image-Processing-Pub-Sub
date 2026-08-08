@@ -80,3 +80,9 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "manage_project_service" {
+  description = "Czy moduł ma zarządzać włączeniem Pub/Sub API i service identity"
+  type        = bool
+  default     = true
+}

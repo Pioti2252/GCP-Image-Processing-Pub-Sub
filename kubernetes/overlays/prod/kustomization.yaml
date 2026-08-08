@@ -18,3 +18,89 @@ images:
 labels:
   - pairs:
       environment: prod
+
+patches:
+
+  # ============================================================
+  # PROD ConfigMap
+  # ============================================================
+  - target:
+      version: v1
+      kind: ConfigMap
+      name: image-processing-config
+    patch: |-
+      - op: replace
+        path: /data/PUBSUB_TOPIC_ID
+        value: image-jobs-prod
+
+      - op: replace
+        path: /data/PUBSUB_SUBSCRIPTION_ID
+        value: image-jobs-worker-prod
+
+      - op: replace
+        path: /data/STORAGE_BUCKET_NAME
+        value: gcp-image-pub-sub-image-processing-prod
+
+  # ============================================================
+  # image-api Workload Identity
+  # ============================================================
+  - target:
+      version: v1
+      kind: ServiceAccount
+      name: image-api
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/iam.gke.io~1gcp-service-account
+        value: image-api-prod@gcp-image-pub-sub.iam.gserviceaccount.com
+
+  # ============================================================
+  # image-worker Workload Identity
+  # ============================================================
+  - target:
+      version: v1
+      kind: ServiceAccount
+      name: image-worker
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/iam.gke.io~1gcp-service-account
+        value: image-worker-prod@gcp-image-pub-sub.iam.gserviceaccount.com
+
+  # ============================================================
+  # image-api -> Cloud SQL PROD
+  # cloud-sql-proxy jest drugim kontenerem w Podzie
+  # ============================================================
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: image-api
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/1/args/3
+        value: gcp-image-pub-sub:europe-central2:image-processing-prod-postgres
+
+  # ============================================================
+  # image-worker -> Cloud SQL PROD
+  # ============================================================
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: image-worker
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/1/args/3
+        value: gcp-image-pub-sub:europe-central2:image-processing-prod-postgres
+
+  # ============================================================
+  # ExternalSecret -> Secret Manager PROD
+  # ============================================================
+  - target:
+      group: external-secrets.io
+      version: v1
+      kind: ExternalSecret
+      name: image-processing-db
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: image-processing-prod-database-password

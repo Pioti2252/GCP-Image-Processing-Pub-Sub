@@ -1,0 +1,7 @@
+project_id = "gcp-image-pub-sub"
+region     = "europe-central2"
+
+
+zone = "europe-central2-a"
+
+gke_admin_cidr = "TWOJ_PUBLICZNY_ADRES_IP/32"

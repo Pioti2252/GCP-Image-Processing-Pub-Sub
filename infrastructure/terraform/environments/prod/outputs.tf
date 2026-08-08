@@ -18,40 +18,12 @@ output "pubsub_service_agent" {
   value = module.pubsub.pubsub_service_agent
 }
 
-output "enabled_project_services" {
-  value = module.project_services.enabled_services
-}
-
-output "artifact_registry_repository_url" {
-  value = module.artifact_registry.docker_repository_url
-}
-
 output "image_api_service_account_email" {
   value = module.iam.image_api_service_account_email
 }
 
 output "image_worker_service_account_email" {
   value = module.iam.image_worker_service_account_email
-}
-
-output "network_name" {
-  value = module.network.network_name
-}
-
-output "gke_subnetwork_name" {
-  value = module.network.subnetwork_name
-}
-
-output "gke_pods_secondary_range_name" {
-  value = module.network.pods_secondary_range_name
-}
-
-output "gke_services_secondary_range_name" {
-  value = module.network.services_secondary_range_name
-}
-
-output "cloud_nat_ip_address" {
-  value = module.network.nat_ip_address
 }
 
 output "image_storage_bucket_name" {
@@ -82,29 +54,10 @@ output "database_password_secret_id" {
   value = module.secret_manager.database_password_secret_id
 }
 
-output "gke_cluster_name" {
-  value = module.gke.cluster_name
-}
-
-output "gke_cluster_location" {
-  value = module.gke.cluster_location
-}
-
-output "gke_workload_identity_pool" {
-  value = module.gke.workload_identity_pool
-}
-
-output "gke_node_service_account_email" {
-  value = module.gke.node_service_account_email
-}
-
 output "kubernetes_namespace" {
   value = module.iam.kubernetes_namespace
 }
-output "network_id" {
-  value = module.network.network_id
-}
 
-output "subnetwork_id" {
-  value = module.network.subnetwork_id
+output "shared_network_id" {
+  value = data.terraform_remote_state.dev.outputs.network_id
 }

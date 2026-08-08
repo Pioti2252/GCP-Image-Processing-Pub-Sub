@@ -1,4 +1,7 @@
 resource "google_compute_global_address" "private_services" {
+
+  count = var.create_private_service_connection ? 1 : 0
+
   project = var.project_id
 
   name          = "${var.instance_name}-private-services-range"
@@ -9,11 +12,14 @@ resource "google_compute_global_address" "private_services" {
 }
 
 resource "google_service_networking_connection" "private_vpc_connection" {
+
+  count = var.create_private_service_connection ? 1 : 0
+
   network = var.network_id
   service = "servicenetworking.googleapis.com"
 
   reserved_peering_ranges = [
-    google_compute_global_address.private_services.name
+    google_compute_global_address.private_services[count.index].name
   ]
 }
 

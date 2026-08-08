@@ -29,6 +29,6 @@ output "dead_letter_subscription_id" {
 }
 
 output "pubsub_service_agent" {
-  description = "Agent usługi Pub/Sub używany przez mechanizm DLQ"
-  value       = google_project_service_identity.pubsub.email
+  description = "Email Google-managed Pub/Sub service agent"
+  value       = local.pubsub_service_agent_email
 }

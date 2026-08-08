@@ -70,3 +70,8 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+variable "create_private_service_connection" {
+  description = "Czy moduł ma tworzyć Private Service Access dla Cloud SQL"
+  type        = bool
+  default     = true
+}

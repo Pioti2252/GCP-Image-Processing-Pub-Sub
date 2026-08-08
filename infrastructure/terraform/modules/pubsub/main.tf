@@ -3,6 +3,8 @@ data "google_project" "current" {
 }
 
 resource "google_project_service" "pubsub" {
+  count = var.manage_project_service ? 1 : 0
+
   project = var.project_id
   service = "pubsub.googleapis.com"
 
@@ -10,6 +12,8 @@ resource "google_project_service" "pubsub" {
 }
 
 resource "google_project_service_identity" "pubsub" {
+  count = var.manage_project_service ? 1 : 0
+
   provider = google-beta
 
   project = var.project_id
@@ -18,6 +22,10 @@ resource "google_project_service_identity" "pubsub" {
   depends_on = [
     google_project_service.pubsub
   ]
+}
+
+locals {
+  pubsub_service_agent_email = var.manage_project_service ? google_project_service_identity.pubsub[0].email : "service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
 resource "google_pubsub_topic" "image_jobs" {
@@ -47,7 +55,7 @@ resource "google_pubsub_topic_iam_member" "dead_letter_publisher" {
 
   member = format(
     "serviceAccount:%s",
-    google_project_service_identity.pubsub.email
+    local.pubsub_service_agent_email
   )
 }
 
@@ -87,7 +95,7 @@ resource "google_pubsub_subscription_iam_member" "worker_subscriber" {
 
   member = format(
     "serviceAccount:%s",
-    google_project_service_identity.pubsub.email
+    local.pubsub_service_agent_email
   )
 }
 
