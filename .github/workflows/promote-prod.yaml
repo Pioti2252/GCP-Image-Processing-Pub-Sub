@@ -5,6 +5,16 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+
+env:
+  PROJECT_ID: gcp-image-pub-sub
+  PROJECT_NUMBER: "337402413508"
+  REGION: europe-central2
+  REPOSITORY: image-processing-dev
+
+  API_IMAGE: image-api
+  WORKER_IMAGE: image-worker
 
 jobs:
   promote:
@@ -17,27 +27,159 @@ jobs:
         with:
           ref: main
 
+      # ----------------------------------------------------------
+      # 1. Odczytaj tag aktualnie wdrożony na DEV
+      # ----------------------------------------------------------
       - name: Read DEV image tag
         id: dev-tag
         working-directory: kubernetes/overlays/dev
         run: |
           TAG=$(grep 'newTag:' kustomization.yaml | head -n 1 | sed -E 's/.*newTag: "(.*)"/\1/')
+
+          if [ -z "${TAG}" ]; then
+            echo "Could not determine DEV image tag"
+            exit 1
+          fi
+
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "DEV tag: ${TAG}"
 
-      - name: Update PROD image tags
-        working-directory: kubernetes/overlays/prod
+      # ----------------------------------------------------------
+      # 2. Autoryzacja do GCP przez Workload Identity Federation
+      # ----------------------------------------------------------
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/337402413508/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+          service_account: github-actions-dev@gcp-image-pub-sub.iam.gserviceaccount.com
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ----------------------------------------------------------
+      # 3. Pobierz immutable digest obrazu API i Workera
+      # ----------------------------------------------------------
+      - name: Resolve image digests
+        id: digests
         env:
           DEV_TAG: ${{ steps.dev-tag.outputs.tag }}
         run: |
-          sed -i -E "s#newTag: \".*\"#newTag: \"${DEV_TAG}\"#g" kustomization.yaml
+          API_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${API_IMAGE}:${DEV_TAG}"
+          WORKER_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${WORKER_IMAGE}:${DEV_TAG}"
 
-          echo "PROD manifest:"
+          echo "Resolving API image:"
+          echo "${API_URI}"
+
+          API_DIGEST=$(gcloud artifacts docker images describe "${API_URI}" \
+            --format="value(image_summary.digest)")
+
+          echo "Resolving worker image:"
+          echo "${WORKER_URI}"
+
+          WORKER_DIGEST=$(gcloud artifacts docker images describe "${WORKER_URI}" \
+            --format="value(image_summary.digest)")
+
+          if [[ ! "${API_DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "Invalid API digest: ${API_DIGEST}"
+            exit 1
+          fi
+
+          if [[ ! "${WORKER_DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "Invalid worker digest: ${WORKER_DIGEST}"
+            exit 1
+          fi
+
+          echo "api_digest=${API_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "worker_digest=${WORKER_DIGEST}" >> "$GITHUB_OUTPUT"
+
+          echo "API digest: ${API_DIGEST}"
+          echo "Worker digest: ${WORKER_DIGEST}"
+
+      # ----------------------------------------------------------
+      # 4. Zmień PROD z tagów na immutable digests
+      # ----------------------------------------------------------
+      - name: Update PROD image digests
+        working-directory: kubernetes/overlays/prod
+        env:
+          API_DIGEST: ${{ steps.digests.outputs.api_digest }}
+          WORKER_DIGEST: ${{ steps.digests.outputs.worker_digest }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path("kustomization.yaml")
+          text = path.read_text()
+
+          api_digest = os.environ["API_DIGEST"]
+          worker_digest = os.environ["WORKER_DIGEST"]
+
+          lines = text.splitlines()
+
+          result = []
+          current_image = None
+
+          for line in lines:
+              stripped = line.strip()
+
+              if stripped.startswith("- name:") and "image-api" in stripped:
+                  current_image = "api"
+                  result.append(line)
+                  continue
+
+              if stripped.startswith("- name:") and "image-worker" in stripped:
+                  current_image = "worker"
+                  result.append(line)
+                  continue
+
+              if stripped.startswith("newTag:"):
+                  if current_image == "api":
+                      result.append(f'    digest: "{api_digest}"')
+                  elif current_image == "worker":
+                      result.append(f'    digest: "{worker_digest}"')
+                  else:
+                      result.append(line)
+                  continue
+
+              if stripped.startswith("digest:"):
+                  if current_image == "api":
+                      result.append(f'    digest: "{api_digest}"')
+                  elif current_image == "worker":
+                      result.append(f'    digest: "{worker_digest}"')
+                  else:
+                      result.append(line)
+                  continue
+
+              result.append(line)
+
+          path.write_text("\n".join(result) + "\n")
+          PY
+
+          echo "Updated PROD Kustomization:"
           cat kustomization.yaml
 
+      # ----------------------------------------------------------
+      # 5. Sprawdź wyrenderowane obrazy przed commitem
+      # ----------------------------------------------------------
+      - name: Validate PROD manifest
+        working-directory: kubernetes/overlays/prod
+        run: |
+          echo "Rendered PROD images:"
+          kubectl kustomize . | grep "image:"
+
+          if kubectl kustomize . | grep "image:" | grep -v "@sha256:"; then
+            echo "PROD contains image without digest"
+            exit 1
+          fi
+
+      # ----------------------------------------------------------
+      # 6. Commit GitOps
+      # ----------------------------------------------------------
       - name: Commit PROD promotion
         env:
           DEV_TAG: ${{ steps.dev-tag.outputs.tag }}
+          API_DIGEST: ${{ steps.digests.outputs.api_digest }}
+          WORKER_DIGEST: ${{ steps.digests.outputs.worker_digest }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -45,9 +187,9 @@ jobs:
           git add kubernetes/overlays/prod/kustomization.yaml
 
           if git diff --cached --quiet; then
-            echo "PROD already uses this image"
+            echo "PROD already uses these image digests"
             exit 0
           fi
 
-          git commit -m "chore(prod): promote ${DEV_TAG}"
+          git commit -m "chore(prod): promote ${DEV_TAG} by digest"
           git push origin HEAD:main
