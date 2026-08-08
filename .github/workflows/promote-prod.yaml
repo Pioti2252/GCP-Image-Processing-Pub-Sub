@@ -164,13 +164,25 @@ jobs:
       - name: Validate PROD manifest
         working-directory: kubernetes/overlays/prod
         run: |
-          echo "Rendered PROD images:"
-          kubectl kustomize . | grep "image:"
+          echo "Rendered PROD application images:"
 
-          if kubectl kustomize . | grep "image:" | grep -v "@sha256:"; then
-            echo "PROD contains image without digest"
+          API_IMAGE=$(kubectl kustomize . | grep "image:.*image-api")
+          WORKER_IMAGE=$(kubectl kustomize . | grep "image:.*image-worker")
+
+          echo "${API_IMAGE}"
+          echo "${WORKER_IMAGE}"
+
+          if [[ ! "${API_IMAGE}" =~ @sha256:[a-f0-9]{64}$ ]]; then
+            echo "image-api is not pinned to a digest"
             exit 1
           fi
+
+          if [[ ! "${WORKER_IMAGE}" =~ @sha256:[a-f0-9]{64}$ ]]; then
+            echo "image-worker is not pinned to a digest"
+            exit 1
+          fi
+
+          echo "PROD application images are pinned to immutable digests."
 
       # ----------------------------------------------------------
       # 6. Commit GitOps
