@@ -9,3 +9,7 @@ resources:
   - image-api-deployment.yaml
   - image-api-service.yaml
   - image-worker-deployment.yaml
+  - image-api-hpa.yaml
+  - image-worker-hpa.yaml
+  - image-api-pdb.yaml
+  - image-worker-pdb.yaml
