@@ -21,6 +21,26 @@ labels:
 
 patches:
 
+  - target:
+      group: monitoring.coreos.com
+      version: v1
+      kind: ServiceMonitor
+      name: image-api
+    patch: |-
+      - op: replace
+        path: /spec/namespaceSelector/matchNames/0
+        value: image-processing-prod
+
+  - target:
+      group: monitoring.coreos.com
+      version: v1
+      kind: ServiceMonitor
+      name: image-worker
+    patch: |-
+      - op: replace
+        path: /spec/namespaceSelector/matchNames/0
+        value: image-processing-prod
+
   # ============================================================
   # PROD ConfigMap
   # ============================================================
