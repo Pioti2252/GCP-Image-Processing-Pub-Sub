@@ -13,3 +13,5 @@ resources:
   - image-worker-hpa.yaml
   - image-api-pdb.yaml
   - image-worker-pdb.yaml
+  - image-api-servicemonitor.yaml
+  - image-worker-servicemonitor.yaml
