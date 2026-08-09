@@ -9,11 +9,11 @@ resources:
 images:
   - name: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-api
     newName: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-api
-    digest: "sha256:a618a4874dedff48e1f74d45f3b8641b1c988a34a1d04d26a799fcf0469c8618"
+    digest: "sha256:821ed02dd6bca044a1b74b3a4dcbb02b14b5e55b4dc7be40ad3df58939980fe0"
 
   - name: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-worker
     newName: europe-central2-docker.pkg.dev/gcp-image-pub-sub/image-processing-dev/image-worker
-    digest: "sha256:0b7aa4dca3b0adfcd49a8d78f9888c9edb3f764cc8b88e2b6aa4e850d7859e14"
+    digest: "sha256:b456ea61aeea5036c3b1306363bd7dee94a6f2f18a2028fd48a342eea3bf265f"
 
 labels:
   - pairs:
