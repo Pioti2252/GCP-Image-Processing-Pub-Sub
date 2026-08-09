@@ -1,0 +1,42 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationFailureAction: Enforce
+  background: true
+
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - image-processing
+                - image-processing-prod
+
+      validate:
+        message: "Każdy obraz kontenera musi posiadać jawnie określony tag lub digest."
+        pattern:
+          spec:
+            containers:
+              - image: "*:*"
+
+    - name: validate-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - image-processing
+                - image-processing-prod
+
+      validate:
+        message: "Tag 'latest' jest zabroniony. Użyj wersjonowanego taga lub digestu SHA256."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
