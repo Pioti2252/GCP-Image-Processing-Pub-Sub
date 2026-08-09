@@ -15,17 +15,22 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends wget \
     && rm -rf /var/lib/apt/lists/*
 
-RUN groupadd --system appgroup \
-    && useradd --system --gid appgroup --home-dir /app appuser
+RUN groupadd --system --gid 10001 appgroup \
+    && useradd --system \
+       --uid 10001 \
+       --gid 10001 \
+       --home-dir /app \
+       --shell /usr/sbin/nologin \
+       appuser
 
 WORKDIR /app
 
 COPY --from=builder /build/target/*.jar app.jar
 
 RUN mkdir -p /data/uploads \
-    && chown -R appuser:appgroup /app /data
+    && chown -R 10001:10001 /app /data
 
-USER appuser
+USER 10001:10001
 
 EXPOSE 8080
 
