@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: image-processing-policies
+  namespace: argocd
+
+spec:
+  project: image-processing
+
+  source:
+    repoURL: https://github.com/Pioti2252/GCP-Image-Processing-Pub-Sub.git
+    targetRevision: main
+    path: kubernetes/policies
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=false
