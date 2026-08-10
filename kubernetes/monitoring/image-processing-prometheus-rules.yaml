@@ -1,0 +1,155 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: image-processing-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: image-processing.rules
+      rules:
+
+        # =========================================================
+        # API DOWN
+        # =========================================================
+        - alert: ImageProcessingApiDown
+          expr: |
+            up{
+              namespace=~"image-processing|image-processing-prod",
+              job="image-api"
+            } == 0
+          for: 2m
+
+          labels:
+            severity: critical
+
+          annotations:
+            summary: "Image Processing API is unavailable"
+            description: "Image API in namespace {{ $labels.namespace }} has been unavailable for more than 2 minutes."
+
+        # =========================================================
+        # WORKER DOWN
+        # =========================================================
+        - alert: ImageProcessingWorkerDown
+          expr: |
+            up{
+              namespace=~"image-processing|image-processing-prod",
+              job="image-worker"
+            } == 0
+          for: 2m
+
+          labels:
+            severity: critical
+
+          annotations:
+            summary: "Image Processing Worker is unavailable"
+            description: "Image Worker in namespace {{ $labels.namespace }} has been unavailable for more than 2 minutes."
+
+        # =========================================================
+        # HIGH HTTP 5XX ERROR RATE
+        # =========================================================
+        - alert: ImageProcessingHigh5xxRate
+          expr: |
+            (
+              sum by (namespace) (
+                rate(
+                  http_server_requests_seconds_count{
+                    namespace=~"image-processing|image-processing-prod",
+                    service="image-api",
+                    status=~"5.."
+                  }[5m]
+                )
+              )
+              /
+              sum by (namespace) (
+                rate(
+                  http_server_requests_seconds_count{
+                    namespace=~"image-processing|image-processing-prod",
+                    service="image-api"
+                  }[5m]
+                )
+              )
+            ) > 0.05
+          for: 5m
+
+          labels:
+            severity: warning
+
+          annotations:
+            summary: "High HTTP 5xx error rate"
+            description: "More than 5% of API requests in namespace {{ $labels.namespace }} are returning HTTP 5xx errors."
+
+        # =========================================================
+        # HIGH API LATENCY P95
+        # =========================================================
+        - alert: ImageProcessingHighLatency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (namespace, le) (
+                rate(
+                  http_server_requests_seconds_bucket{
+                    namespace=~"image-processing|image-processing-prod",
+                    service="image-api"
+                  }[5m]
+                )
+              )
+            ) > 1
+          for: 5m
+
+          labels:
+            severity: warning
+
+          annotations:
+            summary: "High API latency"
+            description: "API p95 latency in namespace {{ $labels.namespace }} has been above 1 second for more than 5 minutes."
+
+        # =========================================================
+        # HIGH DATABASE CONNECTION POOL USAGE
+        # =========================================================
+        - alert: ImageProcessingHighDbPoolUsage
+          expr: |
+            (
+              sum by (namespace) (
+                hikaricp_connections_active{
+                  namespace=~"image-processing|image-processing-prod",
+                  job="image-api"
+                }
+              )
+              /
+              sum by (namespace) (
+                hikaricp_connections_max{
+                  namespace=~"image-processing|image-processing-prod",
+                  job="image-api"
+                }
+              )
+            ) > 0.80
+          for: 5m
+
+          labels:
+            severity: warning
+
+          annotations:
+            summary: "High database connection pool usage"
+            description: "Database connection pool usage in namespace {{ $labels.namespace }} has exceeded 80%."
+
+        # =========================================================
+        # CONTAINER RESTARTS
+        # =========================================================
+        - alert: ImageProcessingContainerRestarting
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace=~"image-processing|image-processing-prod",
+                container=~"image-api|image-worker"
+              }[10m]
+            ) > 2
+          for: 2m
+
+          labels:
+            severity: warning
+
+          annotations:
+            summary: "Application container is restarting"
+            description: "Container {{ $labels.container }} in namespace {{ $labels.namespace }} restarted more than twice during the last 10 minutes."
