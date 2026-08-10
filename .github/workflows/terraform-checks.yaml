@@ -1,0 +1,69 @@
+name: Terraform Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "infrastructure/terraform/**"
+      - ".github/workflows/terraform-checks.yaml"
+
+  push:
+    branches:
+      - main
+    paths:
+      - "infrastructure/terraform/**"
+      - ".github/workflows/terraform-checks.yaml"
+
+  workflow_dispatch:
+
+jobs:
+  terraform-checks:
+    name: Terraform validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Terraform format check
+        working-directory: infrastructure/terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init DEV
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform init -backend=false
+
+      - name: Terraform validate DEV
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform validate
+
+      - name: TFLint init DEV
+        working-directory: infrastructure/terraform/environments/dev
+        run: tflint --init
+
+      - name: TFLint DEV
+        working-directory: infrastructure/terraform/environments/dev
+        run: tflint
+
+      - name: Terraform init PROD
+        working-directory: infrastructure/terraform/environments/prod
+        run: terraform init -backend=false
+
+      - name: Terraform validate PROD
+        working-directory: infrastructure/terraform/environments/prod
+        run: terraform validate
+
+      - name: TFLint init PROD
+        working-directory: infrastructure/terraform/environments/prod
+        run: tflint --init
+
+      - name: TFLint PROD
+        working-directory: infrastructure/terraform/environments/prod
+        run: tflint

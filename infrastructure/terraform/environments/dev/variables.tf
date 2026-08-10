@@ -30,9 +30,3 @@ variable "gke_admin_cidr" {
     error_message = "gke_admin_cidr musi być poprawnym zakresem CIDR, np. 83.20.10.15/32."
   }
 }
-
-variable "region1234" {
-  description = "Region Google Cloud"
-  type        = string
-  default     = "europe-central2"
-}
