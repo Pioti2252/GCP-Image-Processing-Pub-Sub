@@ -5,17 +5,25 @@ metadata:
   namespace: image-processing
   labels:
     app: image-worker
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: image-worker
+
   template:
     metadata:
       labels:
         app: image-worker
+
     spec:
       serviceAccountName: image-worker
+
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
 
       containers:
         - name: image-worker
@@ -24,7 +32,10 @@ spec:
 
           securityContext:
             runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -32,6 +43,7 @@ spec:
           ports:
             - name: http
               containerPort: 8081
+              protocol: TCP
 
           envFrom:
             - configMapRef:
@@ -66,8 +78,13 @@ spec:
               cpu: "1"
               memory: 1Gi
 
+          volumeMounts:
+            - name: image-worker-tmp
+              mountPath: /tmp
+
         - name: cloud-sql-proxy
           image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.18.2
+          imagePullPolicy: IfNotPresent
 
           args:
             - "--private-ip"
@@ -80,6 +97,7 @@ spec:
             runAsUser: 10001
             runAsGroup: 10001
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -91,3 +109,14 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+
+          volumeMounts:
+            - name: cloud-sql-proxy-tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: image-worker-tmp
+          emptyDir: {}
+
+        - name: cloud-sql-proxy-tmp
+          emptyDir: {}

@@ -6,3 +6,4 @@ resources:
   - require-non-root.yaml
   - require-resources.yaml
   - allowed-image-registries.yaml
+  - require-restricted-security-context.yaml

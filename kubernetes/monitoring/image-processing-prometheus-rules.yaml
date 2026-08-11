@@ -153,14 +153,3 @@ spec:
           annotations:
             summary: "Application container is restarting"
             description: "Container {{ $labels.container }} in namespace {{ $labels.namespace }} restarted more than twice during the last 10 minutes."
-
-        - alert: ImageProcessingTestAlert
-          expr: vector(1)
-          for: 1m
-
-          labels:
-            severity: warning
-
-          annotations:
-            summary: "Test alert"
-            description: "This is a temporary test alert for Image Processing Platform."

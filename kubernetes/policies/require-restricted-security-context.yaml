@@ -1,0 +1,44 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-restricted-security-context
+spec:
+  validationFailureAction: Enforce
+  background: true
+
+  rules:
+    - name: validate-containers-security-context
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - image-processing
+                - image-processing-prod
+
+      validate:
+        message: >-
+          Kontenery muszą działać jako non-root, bez privilege escalation,
+          bez Linux capabilities i z read-only root filesystem.
+
+        foreach:
+          - list: request.object.spec.containers
+            pattern:
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+
+          - list: request.object.spec.initContainers || `[]`
+            pattern:
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
