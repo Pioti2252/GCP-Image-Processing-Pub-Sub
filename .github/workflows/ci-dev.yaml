@@ -128,11 +128,29 @@ jobs:
             -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${API_IMAGE}:${IMAGE_TAG}" \
             applications/image-api
 
+      - name: Trivy scan API image
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: '${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.API_IMAGE }}:${{ github.sha }}'
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
       - name: Build image-worker
         run: |
           docker build \
             -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${WORKER_IMAGE}:${IMAGE_TAG}" \
             applications/image-worker
+
+      - name: Trivy scan Worker image
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: '${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.WORKER_IMAGE }}:${{ github.sha }}'
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
 
       - name: Push image-api
         run: |

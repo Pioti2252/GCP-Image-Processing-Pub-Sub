@@ -16,6 +16,11 @@ terraform {
       source  = "hashicorp/google-beta"
       version = "~> 7.0"
     }
+
+        random = {
+      source  = "hashicorp/random"
+      version = "~> 3.9"
+    }
   }
 }
 
@@ -85,6 +90,13 @@ module "iam" {
   ]
 }
 
+resource "random_password" "database" {
+  length  = 32
+  special = true
+
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
 module "cloud_sql" {
   source = "../../modules/cloud-sql"
 
@@ -102,7 +114,7 @@ module "cloud_sql" {
 
   database_name     = "image_processing"
   database_user     = "image_app"
-  database_password = var.database_password
+  database_password = random_password.database.result
 
   # Private Service Access już istnieje w tym VPC.
   create_private_service_connection = false
@@ -153,7 +165,7 @@ module "secret_manager" {
   project_id  = var.project_id
   environment = "prod"
 
-  database_password = var.database_password
+  database_password = random_password.database.result
 
   image_api_service_account_email = (
     module.iam.image_api_service_account_email

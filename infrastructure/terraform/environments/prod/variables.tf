@@ -7,9 +7,3 @@ variable "region" {
   description = "Region Google Cloud"
   type        = string
 }
-
-variable "database_password" {
-  description = "Hasło użytkownika bazy danych PROD"
-  type        = string
-  sensitive   = true
-}

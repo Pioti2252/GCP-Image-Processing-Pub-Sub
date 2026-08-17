@@ -7,3 +7,8 @@ resources:
   - require-resources.yaml
   - allowed-image-registries.yaml
   - require-restricted-security-context.yaml
+
+  - network/default-deny-dev.yaml
+  - network/default-deny-prod.yaml
+  - network/allow-dev.yaml
+  - network/allow-prod.yaml
